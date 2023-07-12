@@ -33,6 +33,8 @@ function computeRoute() {
     var path = google.maps.geometry.encoding.decodePath(polyline);
     var distances = [];
     var polylines = []
+
+    //37.83260486680209, -122.4821962099374 ; 37.827510880318975, -122.50382313421191 ; 37.834777280404545, -122.49456642722907
     var newLocation = new google.maps.LatLng(37.83260486680209, -122.4821962099374);
 
   
