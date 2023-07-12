@@ -1,9 +1,39 @@
-function showPath() {
+/*
+2023/07/12
+
+by Tomas Brand Sastre
+
+This program aims to modify an existing route from Strava (input as polilyne) by adding
+a specific place (in coordinates) in the route.
+
+computeRoute(): Main function which returns the final route as a polyline to be displayed in Google Map's map.
+              It takes the polyline of the route and the coordinates of the place to add as imputs.
+              (At the moment it doesnt hold attributes as I inputed example values directly inside the function)
+
+              The program iterates though all the coordinates in the polyline, and calculates
+              the rout from each coordinate to the place, storing the distances in meters (array[] distances),
+              and the polylines of each calulated route (array[] polylines).
+
+modifyRoute(path, SP1, SP2, s1, s2): This function is called by computeRoute() after calculating 
+              the distances and polylines, and obtaining the 2 points closest to the place. Depending on
+              these values, [1]the route is modified by adding the place in a middle point of the route (by connecting the
+              polyline to the place and returning back), [2]or in one of the ends (extending the polyline to
+              the place)
+
+              "path": polyline to modify; 
+              "SP1" and "SP2": SubRoute1 and SubRoute2 
+              "s1" and "s2": first and second indexes closest to point
+                             \\if s1 or s2 == -1, then perform [2]
+
+
+*/
+
+function computeRoute() {
     var polyline = "}g|eFnpqjVl@En@Md@HbAd@d@^h@Xx@VbARjBDh@OPQf@w@d@k@XKXDFPH\\EbGT`AV`@v@|@NTNb@?XOb@cAxAWLuE@eAFMBoAv@eBt@q@b@}@tAeAt@i@dAC`AFZj@dB?~@[h@MbAVn@b@b@\\d@Eh@Qb@_@d@eB|@c@h@WfBK|AMpA?VF\\\\t@f@t@h@j@|@b@hCb@b@XTd@Bl@GtA?jAL`ALp@Tr@RXd@Rx@Pn@^Zh@Tx@Zf@`@FTCzDy@f@Yx@m@n@Op@VJr@";
     var path = google.maps.geometry.encoding.decodePath(polyline);
     var distances = [];
     var polylines = []
-    var newLocation = new google.maps.LatLng(37.827910307369436, -122.49961402963062);
+    var newLocation = new google.maps.LatLng(37.83260486680209, -122.4821962099374);
 
   
     map.setCenter(path[0]);
@@ -81,56 +111,82 @@ function showPath() {
             if (distances[d] < distances[small1]) {
               small1 = Number(d);
               console.log(small1);
-            } else if (distances[d] < distances[small2]) {
+            }else if (distances[d] < distances[small2] && d!=0) {
+              
               small2 = Number(d);
               console.log(small2);
             }
             d+=bm
         }
-
         
         //output the values
         console.log("Smallest values");
         console.log(small1, small2);
 
-
-        if(small2 > distances.length - bm - 1){
+        //if and else if statements in case the shrine is at the end of the path
+        if(small2 > distances.length - bm - 1 || small1 > distances.length - bm - 1){
+          if(small2 > distances.length - bm - 1){
             var subPath2 = google.maps.geometry.encoding.decodePath(polylines[small2]);
-            path = computeRoute(path, subPath1, subPath2, 0, small2)
-        }
-        else if(small1 > distances.length - bm - 1){
-          var subPath1 = google.maps.geometry.encoding.decodePath(polylines[small1]);
-          path = computeRoute(path, subPath1, subPath2, small1, 0)
-        }
-        else{
-            if(small2<small1){
-              var temp = small1;
-              small1 = small2;
-              small2 = temp;
-            }
+            path = modifyRoute(path, subPath1, subPath2, -1, small2)
+          }
+          else if(small1 > distances.length - bm - 1){
             var subPath1 = google.maps.geometry.encoding.decodePath(polylines[small1]);
-            var subPath2 = google.maps.geometry.encoding.decodePath(polylines[small2]);
-            subPath2.splice(0,1); //remove first value of subPath2 as it is the same as the last value of subPath1.
+            path = modifyRoute(path, subPath1, subPath2, small1, -1)
+          }
+        }
 
-            //output the subpaths
-            console.log(subPath1);
-            console.log(subPath2);
-            
-            //invert the second subpath (subPath2) so the route is from the shrine back to the segment,
-            //and not the opposite
-            var temp = [] 
-            var i = subPath2.length - 1;
+        else if(small2 < bm + 1 || small2 < bm + 1){
+          var temp = [] 
+            var i = path.length - 1;
             while (i >= 0) {
-                temp.push(subPath2[i])
+                temp.push(path[i])
                 i -= 1;
             }
-            subPath2 = temp;
+            path = temp;
             
-            //output the inversed route
-            console.log("Inverted subpath 2")
-            console.log(subPath2);
+          if(small1 < bm + 1){
+            var subPath1 = google.maps.geometry.encoding.decodePath(polylines[small1]);
+            small1 = path.length - small1 -1;
+            path = modifyRoute(path, subPath1, subPath2, small1, -1)
+            
+          }
+          else if(small2 < bm + 1){
+            var subPath2 = google.maps.geometry.encoding.decodePath(polylines[small2]);
+            small2 = path.length - small2 -1;
+            path = modifyRoute(path, subPath1, subPath2, -1, small2)
+          }
+        }
+        
 
-            path = computeRoute(path, subPath1, subPath2, small1, small2);
+        else{
+              if(small2<small1){
+                var temp = small1;
+                small1 = small2;
+                small2 = temp;
+              }
+              var subPath1 = google.maps.geometry.encoding.decodePath(polylines[small1]);
+              var subPath2 = google.maps.geometry.encoding.decodePath(polylines[small2]);
+              subPath2.splice(0,1); //remove first value of subPath2 as it is the same as the last value of subPath1.
+
+              //output the subpaths
+              console.log(subPath1);
+              console.log(subPath2);
+              
+              //invert the second subpath (subPath2) so the route is from the shrine back to the segment,
+              //and not the opposite
+              var temp = [] 
+              var i = subPath2.length - 1;
+              while (i >= 0) {
+                  temp.push(subPath2[i])
+                  i -= 1;
+              }
+              subPath2 = temp;
+              
+              //output the inversed route
+              console.log("Inverted subpath 2")
+              console.log(subPath2);
+
+              path = modifyRoute(path, subPath1, subPath2, small1, small2);
 
         }
     
@@ -154,17 +210,17 @@ function wait(milliseconds) {
     return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
-function computeRoute(path, SP1, SP2, s1, s2){
+function modifyRoute(path, SP1, SP2, s1, s2){
     //"path": polyline to modify; "SP1" and "SP2": SubPath1 and 2; "s1" and "s2": first and second smallest distance
     
     
-    if(s2 == 0){
+    if(s2 == -1){
         path.splice(s1, path.length - s1);
         path.splice(s1,0, ...SP1);
         return path;
 
     }
-    else if(s1 == 0){
+    else if(s1 == -1){
         path.splice(s2, path.length - s2);
         path.splice(s2,0, ...SP2);
         return path;
@@ -178,21 +234,17 @@ function computeRoute(path, SP1, SP2, s1, s2){
       console.log("After delete");
       console.log(path);
 
-      path.splice(s1 , 0, ...SP1);
+      path.splice(s1 , -1, ...SP1);
       console.log("Length of subPath 1: " + SP1.length)
       console.log("Add subPath 1");
       console.log(path);
 
-      path.splice(s1 + SP1.length, 0, ...SP2);
+      path.splice(s1 + SP1.length, -1, ...SP2);
       console.log("Length of subPath 2: " + SP2.length)
       console.log("Add subPath 2");
       console.log(path);
 
     }
-
-
-    
-
     return path;
 }
   
