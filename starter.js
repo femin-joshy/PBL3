@@ -1,6 +1,11 @@
-document.querySelector("h1").addEventListener("click", function() {
-    alert("You clicked the header!");
-});
+/*
+2023/07/10
+
+by Tomas Brand Sastre
+
+- HTML Website Initializer: Displays map. - 
+*/
+
 var marker;
 var directionsService, directionsRenderer;
 
