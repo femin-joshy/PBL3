@@ -3,7 +3,7 @@
 
 by Tomas Brand Sastre
 
-This program aims to modify an existing route from Strava (input as polilyne) by adding
+This program aims to modify an existing route from Strava (input as polyline) by adding
 a specific place (in coordinates) in the route.
 
 computeRoute(): Main function which returns the final route as a polyline to be displayed in Google Map's map.
@@ -34,7 +34,7 @@ function computeRoute() {
     var distances = [];
     var polylines = []
 
-    //37.83260486680209, -122.4821962099374 ; 37.827510880318975, -122.50382313421191 ; 37.834777280404545, -122.49456642722907
+    //37.8275492673435, -122.49969879529225 ; 37.83256765976788, -122.48194336124315 ; 37.834777280404545, -122.49456642722907
     var newLocation = new google.maps.LatLng(37.83260486680209, -122.4821962099374);
 
   
