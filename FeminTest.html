@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Route and Places of Interest</title>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBp8mCZ8DuGAHg3Ixre2aLjDt6K6m5hoB8&callback=initMap&libraries=places"
+    async defer></script>
+    <script>
+      var map;
+      var directionsService;
+      var directionsRenderer;
+      var placesService;
+
+      function initMap() {
+        directionsService = new google.maps.DirectionsService();
+        directionsRenderer = new google.maps.DirectionsRenderer();
+        var kyoto = new google.maps.LatLng(35.0116, 135.7681);
+
+        map = new google.maps.Map(document.getElementById('map'), {
+          center: kyoto,
+          zoom: 14
+        });
+
+        directionsRenderer.setMap(map);
+
+        var request = {
+          origin: 'Saga-Arashiyama Station, Kyoto',
+          destination: 'Togetsu-kyo Bridge, Kyoto',
+          travelMode: 'WALKING'
+        };
+
+        directionsService.route(request, function(result, status) {
+          if (status == 'OK') {
+            directionsRenderer.setDirections(result);
+          }
+        });
+
+        placesService = new google.maps.places.PlacesService(map);
+      }
+
+      function showNearbyPlaces() {
+        var routePath = directionsRenderer.getDirections().routes[0].overview_path;
+
+        routePath.forEach(function(location, i) {
+          // To avoid hitting quota, we only search every 10th point along the route
+          if (i % 10 === 0) {
+            var request = {
+              location: location,
+              radius: '500', // 500 meters
+              type: ['shrine', 'temple']
+            };
+
+            placesService.nearbySearch(request, function(results, status) {
+              if (status == google.maps.places.PlacesServiceStatus.OK) {
+                results.forEach(function(place) {
+                  new google.maps.Marker({
+                    map: map,
+                    position: place.geometry.location
+                  });
+                });
+              }
+            });
+          }
+        });
+      }
+    </script>
+  </head>
+  <body>
+    <div id="map" style="height: 600px; width: 80%;"></div>
+    <button onclick="showNearbyPlaces()">Shrine Time!</button>
+  </body>
+</html>
