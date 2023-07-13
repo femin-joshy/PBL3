@@ -45,7 +45,7 @@
           if (i % 10 === 0) {
             var request = {
               location: location,
-              radius: '500', // 500 meters
+              radius: '500', // 500 meters, maybe we can change this to increase density of search?? but then we have the problem of hitting the quota more often. soo we might have to dio sopme d=kinda calculation based on the length of the path to check every 1/10th of the path.
               type: ['shrine', 'temple']
             };
 
