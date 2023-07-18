@@ -16,8 +16,11 @@
     </script>
 </head>
 <body>
-    <h1>Welcome to Group A!</h1>
-    <p>This is our project.</p>
+    <header>
+        <div class="logo-container">
+            <img src="logo.png" alt="Logo">
+        </div>
+    </header>
 
     <div id="input-section">
         <div class="search-container">
@@ -36,12 +39,14 @@
         </div>
     </div>
 
+    
+
     <div id="map-section">
-        <div id="map" style="height: 600px; width: 100%;"></div>
         <div class="button-container">
             <button id="previous-button">Previous</button>
             <button id="next-button">Next</button>
         </div>
+        <div id="map" style="height: 400px; width: 100%;"></div>
         
 
     </div>
@@ -55,6 +60,6 @@
     <button id="back-button" onclick= location.reload() style="position: absolute; top: 10px; left: 10px;">Back</button>
     
 
-    <script src="main2.js"></script>
+    <script src="main.js"></script>
 </body>
 </html>
