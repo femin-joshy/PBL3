@@ -1,10 +1,20 @@
-var marker;
+var marker = null;
 var directionsService, directionsRenderer, placesService;
 var YOUR_API_KEY = 'AIzaSyBp8mCZ8DuGAHg3Ixre2aLjDt6K6m5hoB8';
-var YOUR_ACCESS_TOKEN = 'ce639fd9e4c7f28eb6f84f2f1e845fafaa262737';
+var YOUR_ACCESS_TOKEN = '1c48f8b4bf9b23b8c49a1c83742e16b47647d6f2';
 var map;
-var currentRouteIndex = -1;
+var currentRouteIndex = 0;
 var routes = [];
+var inputSection = document.getElementById("input-section");
+    var mapSection = document.getElementById("map-section");
+    var locationInput = document.getElementById("location-input");
+    var distanceInput = document.getElementById("distance-input");
+    var activityInput = document.getElementById("activity-input");
+    var findButton = document.getElementById("find-button");
+    var nextButton = document.getElementById("next-button");
+    var previousButton = document.getElementById("previous-button");
+    var loadingOverlay = document.getElementById("loading-overlay");
+    var backButton = document.getElementById("back-button");
 
 function initialize() {
     var mapOptions = {
@@ -42,7 +52,7 @@ async function getSegmentPolylines(location, iDistance, activityType) {
     map.setZoom(14);
 
     // Fetching segments from Strava API
-    const segmentResponse = await fetch(`https://www.strava.com/api/v3/segments/explore?bounds=${lat-0.01},${lng-0.01},${lat+0.01},${lng+0.01}&activity_type=${activityType}&access_token=${YOUR_ACCESS_TOKEN}`);
+    const segmentResponse = await fetch(`https://www.strava.com/api/v3/segments/explore?bounds=${lat-0.02},${lng-0.02},${lat+0.02},${lng+0.02}&activity_type=${activityType}&access_token=${YOUR_ACCESS_TOKEN}`);
 const segmentData = await segmentResponse.json();
 
 // Filter segments based on desired distance
@@ -147,160 +157,152 @@ async function showNearbyPlaces(polyline) {
 }
 
 async function computeRoute(polyline, POI) {
-    console.log("Polyline:" + polyline +" POI: "+ POI);
+    console.log("Polyline:" + polyline + " POI: " + POI);
     var path = google.maps.geometry.encoding.decodePath(polyline);
-    console.log("PATH: "+path.length)
+    console.log("PATH: " + path.length);
     var distances = [];
     var polylines = [];
-    var bm = Number(path.length / 10);
-
-
-
-    var routePromises = path.filter((point, i) => i % 3 === 0).map((point) => {
+    var bm = Math.floor(path.length / 10);
+  
+    var routePromises = path.map((point, i) => {
+      if (i % 3 === 0) {
         return new Promise((resolve, reject) => {
-            directionsService.route({
-                origin: point,
-                destination: POI,
-                travelMode: 'WALKING',
-                provideRouteAlternatives: true
-            }, function(response, status) {
-                if (status === 'OK') {
-                    var route = response.routes[0];
-                    var legs = route.legs;
-                    if (legs.length > 0) {
-                        var distance = legs[0].distance.value;
-                        var legPolyline = route.overview_polyline;
-                        resolve({ distance: distance, polyline: legPolyline });
-                    } else {
-                        reject(new Error('No legs found for route'));
-                    }
-                } else if (status === 'NOT_FOUND') {
-                    console.log('Route not found for POI: ' + POI);
-                    resolve(null); // Skip this route
+          directionsService.route(
+            {
+              origin: point,
+              destination: POI,
+              travelMode: "WALKING",
+              provideRouteAlternatives: true
+            },
+            function(response, status) {
+              if (status === "OK") {
+                var route = response.routes[0];
+                var legs = route.legs;
+                if (legs.length > 0) {
+                  var distance = legs[0].distance.value;
+                  var legPolyline = route.overview_polyline;
+                  resolve({ distance: distance, polyline: legPolyline });
                 } else {
-                    reject(new Error('Directions request failed due to ' + status));
+                  reject(new Error("No legs found for route"));
                 }
-            });
+              } else if (status === "NOT_FOUND") {
+                console.log("Route not found for POI: " + POI);
+                resolve(null); // Skip this route
+              } else {
+                reject(new Error("Directions request failed due to " + status));
+              }
+            }
+          );
         });
+      } else {
+        return Promise.resolve(null); // Skip this route
+      }
     });
-
+  
     var results = await Promise.all(routePromises);
-    
+  
     results.forEach(function(result) {
-        if (result) {
-            distances.push(result.distance);
-            polylines.push(result.polyline);
-        }
+      if (result) {
+        distances.push(result.distance);
+        polylines.push(result.polyline);
+      }
     });
-
-    if(distances.length == 0){
-        console.log("HERE")
-        return null;
+  
+    if (distances.length === 0) {
+      console.log("HERE");
+      return null;
     }
+  
     var small1 = 0;
     var small2 = 1;
-    var d = 0;
-    
-    while (d < path.length) {
-        if (distances[d] < distances[small1]) {
-            small1 = Number(d);
-        } else if (distances[d] < distances[small2] && d != 0) {
-            small2 = Number(d);
-        }
-        d += bm;
+  
+    for (var d = 0; d < distances.length; d++) {
+      if (distances[d] < distances[small1]) {
+        small2 = small1;
+        small1 = d;
+      } else if (distances[d] < distances[small2]) {
+        small2 = d;
+      }
     }
-
+  
     if (small2 > distances.length - bm - 1 || small1 > distances.length - bm - 1) {
-        if (small2 > distances.length - bm - 1) {
-            var subPath2 = google.maps.geometry.encoding.decodePath(polylines[small2]);
-            path = modifyRoute(path, subPath1, subPath2, -1, small2);
-        } else if (small1 > distances.length - bm - 1) {
-            var subPath1 = google.maps.geometry.encoding.decodePath(polylines[small1]);
-            path = modifyRoute(path, subPath1, subPath2, small1, -1);
-        }
-    } else if (small2 < bm + 1 || small2 < bm + 1) {
-        var temp = [];
-        var i = path.length - 1;
-        while (i >= 0) {
-            temp.push(path[i]);
-            i -= 1;
-        }
-        path = temp;
-
-        if (small1 < bm + 1) {
-            var subPath1 = google.maps.geometry.encoding.decodePath(polylines[small1]);
-            small1 = path.length - small1 - 1;
-            path = modifyRoute(path, subPath1, subPath2, small1, -1);
-        } else if (small2 < bm + 1) {
-            var subPath2 = google.maps.geometry.encoding.decodePath(polylines[small2]);
-            small2 = path.length - small2 - 1;
-            path = modifyRoute(path, subPath1, subPath2, -1, small2);
-        }
-    } else {
-        if (small2 < small1) {
-            var temp = small1;
-            small1 = small2;
-            small2 = temp;
-        }
-        var subPath1 = google.maps.geometry.encoding.decodePath(polylines[small1]);
+      if (small2 > distances.length - bm - 1) {
         var subPath2 = google.maps.geometry.encoding.decodePath(polylines[small2]);
-        subPath2.splice(0, 1);
-        var temp = [];
-        var i = subPath2.length - 1;
-        while (i >= 0) {
-            temp.push(subPath2[i]);
-            i -= 1;
-        }
-        subPath2 = temp;
-
-        path = modifyRoute(path, subPath1, subPath2, small1, small2);
+        path = modifyRoute(path, [], subPath2, -1, small2);
+      } else if (small1 > distances.length - bm - 1) {
+        var subPath1 = google.maps.geometry.encoding.decodePath(polylines[small1]);
+        path = modifyRoute(path, subPath1, [], small1, -1);
+      }
+    } else if (small1 < bm + 1 || small2 < bm + 1) {
+      var temp = [];
+      var i = path.length - 1;
+      while (i >= 0) {
+        temp.push(path[i]);
+        i -= 1;
+      }
+      path = temp;
+  
+      if (small1 < bm + 1) {
+        var subPath1 = google.maps.geometry.encoding.decodePath(polylines[small1]);
+        small1 = path.length - small1 - 1;
+        path = modifyRoute(path, subPath1, [], small1, -1);
+      } else if (small2 < bm + 1) {
+        var subPath2 = google.maps.geometry.encoding.decodePath(polylines[small2]);
+        small2 = path.length - small2 - 1;
+        path = modifyRoute(path, [], subPath2, -1, small2);
+      }
+    } else {
+      if (small2 < small1) {
+        var temp = small1;
+        small1 = small2;
+        small2 = temp;
+      }
+      var subPath1 = google.maps.geometry.encoding.decodePath(polylines[small1]);
+      var subPath2 = google.maps.geometry.encoding.decodePath(polylines[small2]);
+      subPath2.splice(0, 1);
+      var temp = [];
+      var i = subPath2.length - 1;
+      while (i >= 0) {
+        temp.push(subPath2[i]);
+        i -= 1;
+      }
+      subPath2 = temp;
+  
+      path = modifyRoute(path, subPath1, subPath2, small1, small2);
     }
-
+  
     return path;
-}
+  }
+  
 
 function wait(milliseconds) {
     return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
 
-function modifyRoute(path, SP1, SP2, s1, s2){
-    //"path": polyline to modify; "SP1" and "SP2": SubPath1 and 2; "s1" and "s2": first and second smallest distance
-    
-    
-    if(s2 == -1){
-        path.splice(s1, path.length - s1);
-        path.splice(s1,0, ...SP1);
-        return path;
-
+function modifyRoute(path, SP1, SP2, s1, s2) {
+    if (s2 === -1) {
+      path.splice(s1, path.length - s1);
+      path.splice(s1 + 1, 0, ...SP1);
+      return path;
+    } else if (s1 === -1) {
+      path.splice(s2 + 1, path.length - s2 - 1);
+      path.splice(s2 + 1, 0, ...SP2);
+      return path;
+    } else {
+      // Determine the index to insert the subpaths
+      var insertIndex = s1 < s2 ? s1 + 1 : s2 + 1;
+      
+      // Reverse the order of subPath2 to maintain continuity
+      SP2.reverse();
+  
+      // Insert subPath1 and subPath2 into the path
+      path.splice(insertIndex, 0, ...SP1, ...SP2);
+      return path;
     }
-    else if(s1 == -1){
-        path.splice(s2, path.length - s2);
-        path.splice(s2,0, ...SP2);
-        return path;
-
-    }
-    else{
-      console.log("Start index, values to delete")
-      console.log(s1, s2 - s1 + 1);
-      path.splice(s1, s2 - s1 + 1);
-
-      console.log("After delete");
-      console.log(path);
-
-      path.splice(s1 , -1, ...SP1);
-      console.log("Length of subPath 1: " + SP1.length)
-      console.log("Add subPath 1");
-      console.log(path);
-
-      path.splice(s1 + SP1.length, -1, ...SP2);
-      console.log("Length of subPath 2: " + SP2.length)
-      console.log("Add subPath 2");
-      console.log(path);
-
-    }
-    return path;
-}
+  }
+  
+  
 
 function calculateDistance(polyline) {
 
@@ -371,7 +373,20 @@ function sortRoutes(routes, iDistance) {
     return routes
   }
   
-
+// Function to show a marker on the map
+function showMarker(position) {
+    // Remove the previous marker from the map if it exists
+    if (marker) {
+      marker.setMap(null);
+    }
+  
+    // Create a new marker at the specified position
+    marker = new google.maps.Marker({
+      position: position,
+      map: map
+    });
+  }
+  
 
 async function displayRoutesOnMap(finalRoutes) {
     for (var x = 0; x < finalRoutes.length; x++) {
@@ -475,23 +490,62 @@ async function routeFinder(Location, iDistance, activityType){
 // Function to display the current route on the map
 function displayCurrentRoute() {
     // Clear previous polylines from the map
-
-    routes.forEach(function(route) {
-        route.polyline.setMap(null);
+    routes.forEach(function (route) {
+      route.polyline.setMap(null);
     });
-
+  
     // Get the current route based on the currentRouteIndex
     var currentRoute = routes[currentRouteIndex];
-    console.log(currentRoute);
-    center = currentRoute.path[0];
-    console.log(center);
-    
-
+  
     // Display the current route on the map
     currentRoute.polyline.setMap(map);
-    map.setCenter(center);
+    map.setCenter(currentRoute.path[0]);
     map.setZoom(16);
-}
+  
+    // Show a marker for the current route's starting point
+    showMarker(currentRoute.path[0]);
+  
+    // Display the distance of the current trail
+    var distance = calculateDistance(currentRoute.path);
+    var distanceElement = document.getElementById("distance");
+    distanceElement.textContent = "Distance: " + distance.toFixed(2) + " meters";
+  
+    // Calculate and display the calories burned
+    var activityType = activityInput.options[activityInput.selectedIndex].value;
+    var caloriesBurned = calculateCaloriesBurned(distance, activityType);
+    var caloriesElement = document.getElementById("calories");
+    caloriesElement.textContent = "Calories: " + caloriesBurned.toFixed(2) +" kcal";
+  
+    // Display the location and activity type of the current trail
+    var locationElement = document.getElementById("location");
+    var activityElement = document.getElementById("activity");
+    locationElement.textContent = "Location: " + locationInput.value;
+    activityElement.textContent =
+      "Activity: " + activityInput.options[activityInput.selectedIndex].text;
+  }
+  
+  function calculateCaloriesBurned(distance, activityType) {
+    // Define the average calories burned per meter for each activity type
+    var averageCaloriesPerMeter = {
+      walking: 0.05, // Adjust the values based on your requirements
+      running: 0.1,
+      cycling: 0.08,
+    };
+  
+    // Calculate the calories burned based on the distance and activity type
+    var caloriesPerMeter = averageCaloriesPerMeter[activityType];
+    var caloriesBurned = distance * caloriesPerMeter;
+  
+    return caloriesBurned;
+  }
+  
+  
+
+
+
+
+
+  
 
 // Function to handle the "Next" button click
 function onNextButtonClick() {
@@ -525,16 +579,7 @@ window.onload = function() {
     initialize();
   
     // Get the HTML elements
-    var inputSection = document.getElementById("input-section");
-    var mapSection = document.getElementById("map-section");
-    var locationInput = document.getElementById("location-input");
-    var distanceInput = document.getElementById("distance-input");
-    var activityInput = document.getElementById("activity-input");
-    var findButton = document.getElementById("find-button");
-    var nextButton = document.getElementById("next-button");
-    var previousButton = document.getElementById("previous-button");
-    var loadingOverlay = document.getElementById("loading-overlay");
-    var backButton = document.getElementById("back-button");
+    
   
     var currentRouteIndex = 0;
   
@@ -558,8 +603,8 @@ window.onload = function() {
         routes = fetchedRoutes.map(function(route) {
           var newPolylineOptions = {
             path: route,
-            strokeColor: "#FFFF00",
-            strokeWeight: 4,
+            strokeColor: "#FF0000",
+            strokeWeight: 7,
             strokeOpacity: 1.0,
             setZoom: 10
           };
@@ -617,6 +662,14 @@ finalShownext(){
     }
     displayRoutesOnMap(flag);
     }
+
+
+
+
+     <div class="description-container">
+            <label for="description-input" class="description-label">Welcome to TrailZen!</label>
+            <p class="description-text">Embark on an outdoor adventure and discover hidden wonders. Use our trail finder to explore captivating routes leading to mysterious shrines. Enter location, distance, and select an activity to start your journey. Let TrailZen guide you to new experiences!</p>
+          </div>
 */
 
 
