@@ -1,9 +1,0 @@
-body {
-    background: rgb(255,242,204);
-background: linear-gradient(90deg, rgba(255,242,204,1) 0%, rgba(226,198,119,1) 49%, rgba(254,188,1,1) 100%);
-h1 {
-    color: #000;
-}
-ion-icon {
-    color: black;
-  }
