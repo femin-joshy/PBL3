@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Project Based Learning</title>
+    <link rel="stylesheet" type="text/css" href="styles.css">
+    
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBp8mCZ8DuGAHg3Ixre2aLjDt6K6m5hoB8&callback=initialize&libraries=places,geometry" async defer></script>
+    <script>
+        function initialize() {
+            // Add event listener to the "Back" button
+            var backButton = document.getElementById("back-button");
+            backButton.addEventListener("click", function() {
+                location.reload(); // Reload the page to start over
+            });
+        }
+    </script>
+</head>
+<body>
+    <h1>Welcome to Group A!</h1>
+    <p>This is our project.</p>
+
+    <div id="input-section">
+        <div class="search-container">
+            <input type="text" id="location-input" placeholder="Enter a location">
+            <input type="text" id="distance-input" placeholder="Enter desired distance">
+            <select id="activity-input" class="input-select">
+                <option value="running">Running</option>
+                <option value="hiking">Hiking</option>
+                <option value="walking">Walking</option>
+                <option value="cycling">Cycling</option>
+              </select>
+            <button id="find-button">Find Trails</button>
+        </div>
+        <div id="loading-overlay">
+            <div id="loading-message">Loading...</div>
+        </div>
+    </div>
+
+    <div id="map-section">
+        <div id="map" style="height: 600px; width: 100%;"></div>
+        <div class="button-container">
+            <button id="previous-button">Previous</button>
+            <button id="next-button">Next</button>
+        </div>
+        
+
+    </div>
+
+    <div id="segment-info">
+        <h2 id="segment-name"></h2>
+        <p id="segment-details"></p>
+    </div>
+
+
+    <button id="back-button" onclick= location.reload() style="position: absolute; top: 10px; left: 10px;">Back</button>
+    
+
+    <script src="main2.js"></script>
+</body>
+</html>
