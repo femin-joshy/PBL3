@@ -1,7 +1,7 @@
 var marker = null;
 var directionsService, directionsRenderer, placesService;
 var YOUR_API_KEY = 'AIzaSyBp8mCZ8DuGAHg3Ixre2aLjDt6K6m5hoB8';
-var YOUR_ACCESS_TOKEN = '1c48f8b4bf9b23b8c49a1c83742e16b47647d6f2';
+var YOUR_ACCESS_TOKEN = '6eb05b3fec5d99998dfaceaa19ad2567a8bfeee8';
 var map;
 var currentRouteIndex = 0;
 var routes = [];
@@ -157,152 +157,160 @@ async function showNearbyPlaces(polyline) {
 }
 
 async function computeRoute(polyline, POI) {
-    console.log("Polyline:" + polyline + " POI: " + POI);
+    console.log("Polyline:" + polyline +" POI: "+ POI);
     var path = google.maps.geometry.encoding.decodePath(polyline);
-    console.log("PATH: " + path.length);
+    console.log("PATH: "+path.length)
     var distances = [];
     var polylines = [];
-    var bm = Math.floor(path.length / 10);
-  
-    var routePromises = path.map((point, i) => {
-      if (i % 3 === 0) {
+    var bm = Number(path.length / 10);
+
+
+
+    var routePromises = path.filter((point, i) => i % 3 === 0).map((point) => {
         return new Promise((resolve, reject) => {
-          directionsService.route(
-            {
-              origin: point,
-              destination: POI,
-              travelMode: "WALKING",
-              provideRouteAlternatives: true
-            },
-            function(response, status) {
-              if (status === "OK") {
-                var route = response.routes[0];
-                var legs = route.legs;
-                if (legs.length > 0) {
-                  var distance = legs[0].distance.value;
-                  var legPolyline = route.overview_polyline;
-                  resolve({ distance: distance, polyline: legPolyline });
+            directionsService.route({
+                origin: point,
+                destination: POI,
+                travelMode: 'WALKING',
+                provideRouteAlternatives: true
+            }, function(response, status) {
+                if (status === 'OK') {
+                    var route = response.routes[0];
+                    var legs = route.legs;
+                    if (legs.length > 0) {
+                        var distance = legs[0].distance.value;
+                        var legPolyline = route.overview_polyline;
+                        resolve({ distance: distance, polyline: legPolyline });
+                    } else {
+                        reject(new Error('No legs found for route'));
+                    }
+                } else if (status === 'NOT_FOUND') {
+                    console.log('Route not found for POI: ' + POI);
+                    resolve(null); // Skip this route
                 } else {
-                  reject(new Error("No legs found for route"));
+                    reject(new Error('Directions request failed due to ' + status));
                 }
-              } else if (status === "NOT_FOUND") {
-                console.log("Route not found for POI: " + POI);
-                resolve(null); // Skip this route
-              } else {
-                reject(new Error("Directions request failed due to " + status));
-              }
-            }
-          );
+            });
         });
-      } else {
-        return Promise.resolve(null); // Skip this route
-      }
     });
-  
+
     var results = await Promise.all(routePromises);
-  
+    
     results.forEach(function(result) {
-      if (result) {
-        distances.push(result.distance);
-        polylines.push(result.polyline);
-      }
+        if (result) {
+            distances.push(result.distance);
+            polylines.push(result.polyline);
+        }
     });
-  
-    if (distances.length === 0) {
-      console.log("HERE");
-      return null;
+
+    if(distances.length == 0){
+        console.log("HERE")
+        return null;
     }
-  
     var small1 = 0;
     var small2 = 1;
-  
-    for (var d = 0; d < distances.length; d++) {
-      if (distances[d] < distances[small1]) {
-        small2 = small1;
-        small1 = d;
-      } else if (distances[d] < distances[small2]) {
-        small2 = d;
-      }
+    var d = 0;
+    
+    while (d < path.length) {
+        if (distances[d] < distances[small1]) {
+            small1 = Number(d);
+        } else if (distances[d] < distances[small2] && d != 0) {
+            small2 = Number(d);
+        }
+        d += bm;
     }
-  
+
     if (small2 > distances.length - bm - 1 || small1 > distances.length - bm - 1) {
-      if (small2 > distances.length - bm - 1) {
-        var subPath2 = google.maps.geometry.encoding.decodePath(polylines[small2]);
-        path = modifyRoute(path, [], subPath2, -1, small2);
-      } else if (small1 > distances.length - bm - 1) {
-        var subPath1 = google.maps.geometry.encoding.decodePath(polylines[small1]);
-        path = modifyRoute(path, subPath1, [], small1, -1);
-      }
-    } else if (small1 < bm + 1 || small2 < bm + 1) {
-      var temp = [];
-      var i = path.length - 1;
-      while (i >= 0) {
-        temp.push(path[i]);
-        i -= 1;
-      }
-      path = temp;
-  
-      if (small1 < bm + 1) {
-        var subPath1 = google.maps.geometry.encoding.decodePath(polylines[small1]);
-        small1 = path.length - small1 - 1;
-        path = modifyRoute(path, subPath1, [], small1, -1);
-      } else if (small2 < bm + 1) {
-        var subPath2 = google.maps.geometry.encoding.decodePath(polylines[small2]);
-        small2 = path.length - small2 - 1;
-        path = modifyRoute(path, [], subPath2, -1, small2);
-      }
+        if (small2 > distances.length - bm - 1) {
+            var subPath2 = google.maps.geometry.encoding.decodePath(polylines[small2]);
+            path = modifyRoute(path, subPath1, subPath2, -1, small2);
+        } else if (small1 > distances.length - bm - 1) {
+            var subPath1 = google.maps.geometry.encoding.decodePath(polylines[small1]);
+            path = modifyRoute(path, subPath1, subPath2, small1, -1);
+        }
+    } else if (small2 < bm + 1 || small2 < bm + 1) {
+        var temp = [];
+        var i = path.length - 1;
+        while (i >= 0) {
+            temp.push(path[i]);
+            i -= 1;
+        }
+        path = temp;
+
+        if (small1 < bm + 1) {
+            var subPath1 = google.maps.geometry.encoding.decodePath(polylines[small1]);
+            small1 = path.length - small1 - 1;
+            path = modifyRoute(path, subPath1, subPath2, small1, -1);
+        } else if (small2 < bm + 1) {
+            var subPath2 = google.maps.geometry.encoding.decodePath(polylines[small2]);
+            small2 = path.length - small2 - 1;
+            path = modifyRoute(path, subPath1, subPath2, -1, small2);
+        }
     } else {
-      if (small2 < small1) {
-        var temp = small1;
-        small1 = small2;
-        small2 = temp;
-      }
-      var subPath1 = google.maps.geometry.encoding.decodePath(polylines[small1]);
-      var subPath2 = google.maps.geometry.encoding.decodePath(polylines[small2]);
-      subPath2.splice(0, 1);
-      var temp = [];
-      var i = subPath2.length - 1;
-      while (i >= 0) {
-        temp.push(subPath2[i]);
-        i -= 1;
-      }
-      subPath2 = temp;
-  
-      path = modifyRoute(path, subPath1, subPath2, small1, small2);
+        if (small2 < small1) {
+            var temp = small1;
+            small1 = small2;
+            small2 = temp;
+        }
+        var subPath1 = google.maps.geometry.encoding.decodePath(polylines[small1]);
+        var subPath2 = google.maps.geometry.encoding.decodePath(polylines[small2]);
+        subPath2.splice(0, 1);
+        var temp = [];
+        var i = subPath2.length - 1;
+        while (i >= 0) {
+            temp.push(subPath2[i]);
+            i -= 1;
+        }
+        subPath2 = temp;
+
+        path = modifyRoute(path, subPath1, subPath2, small1, small2);
     }
-  
+
     return path;
-  }
-  
+}
 
 function wait(milliseconds) {
     return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
 
-function modifyRoute(path, SP1, SP2, s1, s2) {
-    if (s2 === -1) {
-      path.splice(s1, path.length - s1);
-      path.splice(s1 + 1, 0, ...SP1);
-      return path;
-    } else if (s1 === -1) {
-      path.splice(s2 + 1, path.length - s2 - 1);
-      path.splice(s2 + 1, 0, ...SP2);
-      return path;
-    } else {
-      // Determine the index to insert the subpaths
-      var insertIndex = s1 < s2 ? s1 + 1 : s2 + 1;
-      
-      // Reverse the order of subPath2 to maintain continuity
-      SP2.reverse();
-  
-      // Insert subPath1 and subPath2 into the path
-      path.splice(insertIndex, 0, ...SP1, ...SP2);
-      return path;
+function modifyRoute(path, SP1, SP2, s1, s2){
+    //"path": polyline to modify; "SP1" and "SP2": SubPath1 and 2; "s1" and "s2": first and second smallest distance
+    
+    
+    if(s2 == -1){
+        path.splice(s1, path.length - s1);
+        path.splice(s1,0, ...SP1);
+        return path;
+
     }
-  }
-  
-  
+    else if(s1 == -1){
+        path.splice(s2, path.length - s2);
+        path.splice(s2,0, ...SP2);
+        return path;
+
+    }
+    else{
+      console.log("Start index, values to delete")
+      console.log(s1, s2 - s1 + 1);
+      path.splice(s1, s2 - s1 + 1);
+
+      console.log("After delete");
+      console.log(path);
+
+      path.splice(s1 , -1, ...SP1);
+      console.log("Length of subPath 1: " + SP1.length)
+      console.log("Add subPath 1");
+      console.log(path);
+
+      path.splice(s1 + SP1.length, -1, ...SP2);
+      console.log("Length of subPath 2: " + SP2.length)
+      console.log("Add subPath 2");
+      console.log(path);
+
+    }
+    return path;
+}
 
 function calculateDistance(polyline) {
 
