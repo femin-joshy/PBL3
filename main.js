@@ -1,7 +1,7 @@
 var marker = null;
 var directionsService, directionsRenderer, placesService;
 var YOUR_API_KEY = 'AIzaSyBp8mCZ8DuGAHg3Ixre2aLjDt6K6m5hoB8';
-var YOUR_ACCESS_TOKEN = 'bbcb6c2033df230965e0d975f2ad174b906ca539';
+var YOUR_ACCESS_TOKEN = 'fe5342e88151a76fd15200df91811ae1df437f74';
 var map;
 var currentRouteIndex = 0;
 var routes = [];
