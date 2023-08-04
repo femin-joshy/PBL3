@@ -403,7 +403,7 @@ async function displayRoutesOnMap(finalRoutes) {
       var newPolylineOptions = {
         path: path,
         strokeColor: "#FF0000",
-        strokeWeight: 4,
+        strokeWeight: 3,
         strokeOpacity: 1.0,
         setZoom: 10
       };
